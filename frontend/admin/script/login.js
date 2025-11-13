@@ -1,7 +1,7 @@
 /* =================== Configuration =================== */
-const API_BASE_URL = window.location.origin.includes("ngrok")
-  ? "https://caiden-recondite-psychometrically.ngrok-free.dev"
-  : "localhost:5001";
+const API_BASE_URL = window.location.origin.includes("localhost")
+  ? "http://localhost:5001"
+  : "https://tslfreightmovers.com";
 
 // Get email from hidden field or modal data
 function getVerifyEmail() {
@@ -311,21 +311,20 @@ document.addEventListener("DOMContentLoaded", () => {
         confirmPasswordError.textContent = "Passwords do not match.";
         return;
       }
-      
-        /* =================== Contact Number Validation (Philippines) =================== */
-        const contactNumberPattern = /^(?:\+639\d{9}|09\d{9})$/; // accepts +639XXXXXXXXX or 09XXXXXXXXX
-        const contactNumberField = document.getElementById("signupContactNumber");
-        const phoneError = document.getElementById("phoneError");
 
-        phoneError.textContent = ""; // clear any previous message
-        contactNumberField.classList.remove("is-invalid");
+      /* =================== Contact Number Validation (Philippines) =================== */
+      const contactNumberPattern = /^(?:\+639\d{9}|09\d{9})$/; // accepts +639XXXXXXXXX or 09XXXXXXXXX
+      const contactNumberField = document.getElementById("signupContactNumber");
+      const phoneError = document.getElementById("phoneError");
 
-        if (!contactNumberPattern.test(contact_number)) {
-          contactNumberField.classList.add("is-invalid");
-          phoneError.textContent = "Please provide a valid mobile number.";
-          return;
-        }
+      phoneError.textContent = ""; // clear any previous message
+      contactNumberField.classList.remove("is-invalid");
 
+      if (!contactNumberPattern.test(contact_number)) {
+        contactNumberField.classList.add("is-invalid");
+        phoneError.textContent = "Please provide a valid mobile number.";
+        return;
+      }
 
       /* =================== Signup API Request =================== */
       try {

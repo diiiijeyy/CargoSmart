@@ -40,32 +40,33 @@ function broadcastUpdate(shipmentId) {
   if (!latest) return;
 
   // 🟢 Fetch the device_id for this shipment
-  pool.query(
-    `SELECT device_id FROM gps_assignments 
+  pool
+    .query(
+      `SELECT device_id FROM gps_assignments 
      WHERE shipment_id = $1 AND released_at IS NULL 
      ORDER BY assigned_at DESC LIMIT 1`,
-    [shipmentId]
-  )
-  .then(result => {
-    const deviceId = result.rows[0]?.device_id || null;
+      [shipmentId]
+    )
+    .then((result) => {
+      const deviceId = result.rows[0]?.device_id || null;
 
-    const payload = {
-      deviceId,                 // ✅ added
-      shipmentId,
-      latitude: Number(latest.latitude),
-      longitude: Number(latest.longitude),
-      speed: latest.speed,
-      timestamp: latest.timestamp,
-    };
+      const payload = {
+        deviceId, // ✅ added
+        shipmentId,
+        latitude: Number(latest.latitude),
+        longitude: Number(latest.longitude),
+        speed: latest.speed,
+        timestamp: latest.timestamp,
+      };
 
-    const json = JSON.stringify(payload);
-    wss.clients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(json);
-      }
-    });
-  })
-  .catch(err => console.error("broadcastUpdate() error:", err));
+      const json = JSON.stringify(payload);
+      wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(json);
+        }
+      });
+    })
+    .catch((err) => console.error("broadcastUpdate() error:", err));
 }
 
 //pinaltan ni jade
@@ -91,8 +92,12 @@ app.use((req, res, next) => {
 
 app.use(
   cors({
-    origin: "https://caiden-recondite-psychometrically.ngrok-free.dev", // ✅ ngrok frontend
-    credentials: true, // ✅ allow cookies/sessions
+    origin: [
+      "https://tslfreightmovers.com",
+      "https://www.tslfreightmovers.com",
+      "http://localhost:5001"
+    ],
+    credentials: true
   })
 );
 
@@ -751,9 +756,9 @@ app.post("/api/login", async (req, res) => {
       // ✅ CORS headers (for ngrok + localhost)
       const origin = req.headers.origin;
       if (
-        origin === "https://caiden-recondite-psychometrically.ngrok-free.dev" ||
-        origin === "http://localhost:5500" ||
-        origin === "http://127.0.0.1:5500"
+        origin === "https://tslfreightmovers.com" ||
+        origin === "https://www.tslfreightmovers.com" ||
+        origin === "https://tslfreightmovers.com"
       ) {
         res.setHeader("Access-Control-Allow-Origin", origin);
       }
@@ -1009,7 +1014,6 @@ app.get("/api/analytics/payment-status", async (req, res) => {
   }
 });
 
-
 app.get("/api/analytics/payment-decision", async (req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -1046,7 +1050,9 @@ app.get("/api/analytics/payment-decision", async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error("Error fetching payment decision analytics:", err);
-    res.status(500).json({ error: "Failed to fetch payment decision analytics" });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch payment decision analytics" });
   }
 });
 
@@ -1125,7 +1131,7 @@ app.get("/api/dashboard/shipment-volume", async (req, res) => {
     const { rows } = await pool.query(query);
 
     // keep the same format for frontend
-    const formatted = rows.map(r => ({
+    const formatted = rows.map((r) => ({
       month: r.week_label,
       total: Number(r.total),
     }));
@@ -1137,7 +1143,6 @@ app.get("/api/dashboard/shipment-volume", async (req, res) => {
   }
 });
 
-
 // ==============================
 // Enhanced Shipment Volume Analytics (Improved)
 // ==============================
@@ -1148,7 +1153,8 @@ app.get("/api/analytics/shipment-volume", async (req, res) => {
     const params = [];
 
     if (filter === "this_month" || filter === "last_month") {
-      const monthOffset = filter === "last_month" ? " - INTERVAL '1 month'" : "";
+      const monthOffset =
+        filter === "last_month" ? " - INTERVAL '1 month'" : "";
 
       query = `
         WITH week_ranges AS (
@@ -1749,8 +1755,6 @@ app.get("/api/shipments/latest-tracking/:clientId", async (req, res) => {
     res.status(500).json({ message: "Error fetching shipment details." });
   }
 });
-
-
 
 // =================================================
 // 📡 REST API Endpoints for Shipments
@@ -3966,7 +3970,6 @@ app.get("/api/reports/client-revenue", requireAdmin, async (req, res) => {
 // END OF ADMIN REPORTS //
 //=====================//
 
-
 // ========================
 //    USERS PROFILE API
 // ========================
@@ -5055,25 +5058,26 @@ wss.on("connection", (ws, req) => {
       }
 
       // ✅ Ignore small GPS drift (less than ~5 meters)
-const prev = latestGPSData[shipmentId];
-const moved =
-  !prev ||
-  Math.abs(prev.latitude - data.latitude) > 0.00005 ||
-  Math.abs(prev.longitude - data.longitude) > 0.00005;
+      const prev = latestGPSData[shipmentId];
+      const moved =
+        !prev ||
+        Math.abs(prev.latitude - data.latitude) > 0.00005 ||
+        Math.abs(prev.longitude - data.longitude) > 0.00005;
 
-if (!moved) {
-  console.log(`🟡 Shipment ${shipmentId}: position unchanged — skipping broadcast`);
-  return; // 🚫 Stop here — no DB update, no broadcast
-}
+      if (!moved) {
+        console.log(
+          `🟡 Shipment ${shipmentId}: position unchanged — skipping broadcast`
+        );
+        return; // 🚫 Stop here — no DB update, no broadcast
+      }
 
-// ✅ Update in-memory data
-latestGPSData[shipmentId] = {
-  latitude: data.latitude,
-  longitude: data.longitude,
-  timestamp: Date.now(),
-  speed: data.speed || null,
-};
-
+      // ✅ Update in-memory data
+      latestGPSData[shipmentId] = {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        timestamp: Date.now(),
+        speed: data.speed || null,
+      };
 
       // ✅ Save to DB
       try {
@@ -5085,7 +5089,9 @@ latestGPSData[shipmentId] = {
           [data.latitude, data.longitude, Number(shipmentId)]
         );
 
-        console.log(`✅ GPS DB update for shipment ${shipmentId}: ${result.rowCount} row(s)`);
+        console.log(
+          `✅ GPS DB update for shipment ${shipmentId}: ${result.rowCount} row(s)`
+        );
 
         if (result.rowCount === 0) {
           console.warn(`⚠️ No shipment found with id ${shipmentId}`);
@@ -5101,7 +5107,6 @@ latestGPSData[shipmentId] = {
     }
   });
 });
-
 
 // ==========================
 // ✅ FIXED broadcastUpdate()
@@ -5129,9 +5134,9 @@ async function broadcastUpdate(shipmentId) {
     if (client.readyState === WebSocket.OPEN) {
       client.send(
         JSON.stringify({
-          type: "gps_update",       
-          shipmentId: shipmentId,   
-          deviceId: deviceId,       
+          type: "gps_update",
+          shipmentId: shipmentId,
+          deviceId: deviceId,
           latitude: data.latitude,
           longitude: data.longitude,
           timestamp: data.timestamp,
@@ -5140,7 +5145,6 @@ async function broadcastUpdate(shipmentId) {
     }
   });
 }
-
 
 // ============================================================
 // ✅ ADMIN: Fetch all shipments (includes live GPS coordinates)
@@ -5736,8 +5740,6 @@ app.get(
   }
 );
 
-
-
 // ===========================//
 // Operational Manager Side  //
 // =========================//
@@ -6264,17 +6266,17 @@ app.post("/api/gps", async (req, res) => {
       timestamp: Date.now(),
     };
 
-    
-await pool.query(
-  `UPDATE shipments
+    await pool.query(
+      `UPDATE shipments
    SET specific_lat = $1,
        specific_lon = $2
    WHERE id = $3`,
-  [latitude, longitude, shipmentId]
-);
+      [latitude, longitude, shipmentId]
+    );
 
-
-    console.log(`🚀 Broadcasting live GPS for Shipment ${shipmentId} (${deviceId})`);
+    console.log(
+      `🚀 Broadcasting live GPS for Shipment ${shipmentId} (${deviceId})`
+    );
     broadcastUpdate(shipmentId);
 
     res.json({ message: "✅ GPS data recorded and broadcast." });
@@ -6511,7 +6513,7 @@ app.get("/api/gps/history/:shipmentId", async (req, res) => {
 });
 
 // =====================================
-// 📦 Get shipments for logged-in client 
+// 📦 Get shipments for logged-in client
 // =====================================
 // 📦 Get shipments for logged-in client
 app.get("/api/client/shipments", async (req, res) => {
